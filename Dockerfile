@@ -1,23 +1,49 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    git \
-    wget \
-    && rm -rf /var/lib/apt/lists/*
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir -r requirements.txt
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    ffmpeg \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY handler.py .
+# Clone the official WAN 2.2 repo
+RUN git clone https://github.com/Wan-Video/Wan2.2.git /app/Wan2.2
 
-ENV MOCK_MODE=true
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    runpod \
+    huggingface_hub[cli] \
+    torch torchvision torchaudio \
+    accelerate \
+    transformers \
+    diffusers \
+    sentencepiece \
+    opencv-python-headless \
+    pillow \
+    einops \
+    imageio \
+    imageio-ffmpeg \
+    decord \
+    easydict \
+    onnxruntime-gpu \
+    insightface \
+    mediapipe
 
-CMD ["python3", "handler.py"]
+# Install WAN 2.2 dependencies from repo
+WORKDIR /app/Wan2.2
+RUN pip install --no-cache-dir -e .
+
+# Download model weights (this takes a while - ~28GB)
+RUN huggingface-cli download Wan-AI/Wan2.2-Animate-14B \
+    --local-dir /app/Wan2.2/Wan2.2-Animate-14B
+
+WORKDIR /app
+
+# Copy handler
+COPY handler.py /app/handler.py
+
+CMD ["python", "-u", "/app/handler.py"]
