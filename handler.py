@@ -9,10 +9,40 @@ import uuid
 sys.path.insert(0, "/app/Wan2.2")
 
 CKPT_DIR = "/app/Wan2.2/Wan2.2-Animate-14B"
+MODEL_READY = False
+
+
+def ensure_model_downloaded():
+    """Download model weights on first run if not already present."""
+    global MODEL_READY
+    if MODEL_READY:
+        return True
+
+    marker = os.path.join(CKPT_DIR, ".download_complete")
+    if os.path.exists(marker):
+        MODEL_READY = True
+        return True
+
+    print("Downloading WAN 2.2 Animate model weights... This will take a few minutes on first run.")
+    os.makedirs(CKPT_DIR, exist_ok=True)
+
+    try:
+        from huggingface_hub import snapshot_download
+        snapshot_download(
+            "Wan-AI/Wan2.2-Animate-14B",
+            local_dir=CKPT_DIR
+        )
+        with open(marker, "w") as f:
+            f.write("done")
+        MODEL_READY = True
+        print("Model download complete!")
+        return True
+    except Exception as e:
+        print(f"Model download failed: {e}")
+        return False
 
 
 def save_base64_file(b64_data, suffix):
-    """Save base64-encoded data to a temp file."""
     file_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}{suffix}")
     with open(file_path, "wb") as f:
         f.write(base64.b64decode(b64_data))
@@ -20,14 +50,15 @@ def save_base64_file(b64_data, suffix):
 
 
 def encode_file_base64(file_path):
-    """Read a file and return base64-encoded string."""
     with open(file_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
 def handler(job):
-    """RunPod serverless handler for WAN 2.2 Animate."""
     job_input = job["input"]
+
+    if not ensure_model_downloaded():
+        return {"error": "Model weights not available. Download failed."}
 
     character_image_b64 = job_input.get("character_image")
     driver_video_b64 = job_input.get("driver_video")
@@ -37,13 +68,11 @@ def handler(job):
     if not character_image_b64 or not driver_video_b64:
         return {"error": "Both character_image and driver_video are required"}
 
-    # Save inputs to temp files
     image_path = save_base64_file(character_image_b64, ".png")
     video_path = save_base64_file(driver_video_b64, ".mp4")
     output_path = os.path.join(tempfile.gettempdir(), f"{uuid.uuid4()}.mp4")
 
     try:
-        # Step 1: Preprocess
         preprocess_dir = os.path.join(tempfile.gettempdir(), f"preprocess_{uuid.uuid4()}")
         os.makedirs(preprocess_dir, exist_ok=True)
 
@@ -61,7 +90,6 @@ def handler(job):
         if result.returncode != 0:
             return {"error": f"Preprocessing failed: {result.stderr}"}
 
-        # Step 2: Run inference
         generate_cmd = [
             "python", "/app/Wan2.2/generate.py",
             "--task", "animate",
@@ -78,9 +106,7 @@ def handler(job):
         if result.returncode != 0:
             return {"error": f"Inference failed: {result.stderr}"}
 
-        # Find output video
         if not os.path.exists(output_path):
-            # Check default output location
             for f in os.listdir("/app/Wan2.2"):
                 if f.endswith(".mp4"):
                     output_path = os.path.join("/app/Wan2.2", f)
@@ -89,7 +115,6 @@ def handler(job):
         if not os.path.exists(output_path):
             return {"error": "Output video not found"}
 
-        # Encode and return
         output_b64 = encode_file_base64(output_path)
         return {"output_video": output_b64, "status": "completed"}
 
@@ -98,7 +123,6 @@ def handler(job):
     except Exception as e:
         return {"error": str(e)}
     finally:
-        # Cleanup temp files
         for f in [image_path, video_path]:
             if os.path.exists(f):
                 os.remove(f)
