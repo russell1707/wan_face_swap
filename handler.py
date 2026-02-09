@@ -8,12 +8,11 @@ import uuid
 
 sys.path.insert(0, "/app/Wan2.2")
 
-CKPT_DIR = "/app/Wan2.2/Wan2.2-Animate-14B"
+CKPT_DIR = "/runpod-volume/Wan2.2-Animate-14B"
 MODEL_READY = False
 
 
 def ensure_model_downloaded():
-    """Download model weights on first run if not already present."""
     global MODEL_READY
     if MODEL_READY:
         return True
