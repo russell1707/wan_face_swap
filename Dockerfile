@@ -39,7 +39,8 @@ RUN pip3 install --no-cache-dir -r /app/Wan2.2/requirements.txt || true
 # Install flash-attn separately (can be finicky)
 RUN pip3 install --no-cache-dir flash-attn --no-build-isolation || true
 
-# Install animate-specific dependencies
+# Install ALL animate preprocessing dependencies
+# Sources: process_pipepline.py, pose2d.py, preprocess_data.py, utils.py
 RUN pip3 install --no-cache-dir \
     loguru \
     decord \
@@ -52,7 +53,13 @@ RUN pip3 install --no-cache-dir \
     diffusers \
     transformers \
     accelerate \
-    safetensors
+    safetensors \
+    opencv-python-headless \
+    Pillow \
+    moviepy \
+    scipy \
+    scikit-image \
+    librosa
 
 # Install SAM2 from git (required for animate preprocessing)
 RUN pip3 install --no-cache-dir "git+https://github.com/facebookresearch/sam2.git"
