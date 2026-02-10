@@ -5,6 +5,7 @@ import subprocess
 import base64
 import tempfile
 import uuid
+import time
 
 sys.path.insert(0, "/app/Wan2.2")
 
@@ -55,14 +56,15 @@ def encode_file_base64(file_path):
 
 def handler(job):
     job_input = job["input"]
+    start_time = time.time()
 
     if not ensure_model_downloaded():
         return {"error": "Model weights not available. Download failed."}
 
     character_image_b64 = job_input.get("character_image")
     driver_video_b64 = job_input.get("driver_video")
-    width = job_input.get("width", 1280)
-    height = job_input.get("height", 720)
+    width = job_input.get("width", 854)
+    height = job_input.get("height", 480)
 
     if not character_image_b64 or not driver_video_b64:
         return {"error": "Both character_image and driver_video are required"}
@@ -74,6 +76,8 @@ def handler(job):
     try:
         preprocess_dir = os.path.join(tempfile.gettempdir(), f"preprocess_{uuid.uuid4()}")
         os.makedirs(preprocess_dir, exist_ok=True)
+
+        print(f"[TIMING] Starting preprocessing at {time.time() - start_time:.1f}s")
 
         preprocess_cmd = [
             "python3", "/app/Wan2.2/wan/modules/animate/preprocess/preprocess_data.py",
@@ -89,21 +93,30 @@ def handler(job):
         if result.returncode != 0:
             return {"error": f"Preprocessing failed: {result.stderr}"}
 
+        print(f"[TIMING] Preprocessing done at {time.time() - start_time:.1f}s, starting inference")
+
         generate_cmd = [
             "python3", "/app/Wan2.2/generate.py",
             "--task", "animate",
             "--size", f"{width}*{height}",
             "--ckpt_dir", CKPT_DIR,
-            "--offload_model", "True",
-            "--convert_model_dtype",
             "--video_path", video_path,
             "--refer_path", image_path,
             "--output_path", output_path
         ]
 
-        result = subprocess.run(generate_cmd, capture_output=True, text=True, timeout=1800)
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = "0"
+        env["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+
+        result = subprocess.run(generate_cmd, capture_output=True, text=True, timeout=1800, env=env)
+
+        print(f"[TIMING] Inference done at {time.time() - start_time:.1f}s")
+        print(f"[STDOUT] {result.stdout[-2000:] if result.stdout else 'none'}")
+        print(f"[STDERR] {result.stderr[-2000:] if result.stderr else 'none'}")
+
         if result.returncode != 0:
-            return {"error": f"Inference failed: {result.stderr}"}
+            return {"error": f"Inference failed: {result.stderr[-500:]}"}
 
         if not os.path.exists(output_path):
             for f in os.listdir("/app/Wan2.2"):
@@ -115,7 +128,11 @@ def handler(job):
             return {"error": "Output video not found"}
 
         output_b64 = encode_file_base64(output_path)
-        return {"output_video": output_b64, "status": "completed"}
+
+        total_time = time.time() - start_time
+        print(f"[TIMING] Total job completed in {total_time:.1f}s ({total_time/60:.1f}min)")
+
+        return {"output_video": output_b64, "status": "completed", "processing_time_seconds": total_time}
 
     except subprocess.TimeoutExpired:
         return {"error": "Processing timed out"}
