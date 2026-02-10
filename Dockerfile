@@ -47,8 +47,8 @@ RUN pip3 install --no-cache-dir \
     sentencepiece \
     huggingface_hub[cli]
 
-# Install SAM2 (required for animate preprocessing)
-RUN pip3 install --no-cache-dir SAM-2==1.1.0
+# Install SAM2 from git (required for animate preprocessing)
+RUN pip3 install --no-cache-dir "git+https://github.com/facebookresearch/sam2.git"
 
 # Install RunPod SDK
 RUN pip3 install --no-cache-dir runpod>=1.6.0
