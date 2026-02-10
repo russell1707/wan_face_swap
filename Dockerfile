@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
+# Ensure 'python' command works (some scripts use python instead of python3)
+RUN ln -sf /usr/bin/python3 /usr/bin/python
+
 WORKDIR /app
 
 # Clone WAN 2.2 repo
