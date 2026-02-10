@@ -59,7 +59,14 @@ RUN pip3 install --no-cache-dir \
     moviepy \
     scipy \
     scikit-image \
-    librosa
+    librosa \
+    easydict \
+    ftfy \
+    imageio[ffmpeg] \
+    imageio-ffmpeg \
+    tokenizers \
+    tqdm \
+    "numpy>=1.23.5,<2"
 
 # Install SAM2 from git (required for animate preprocessing)
 RUN pip3 install --no-cache-dir "git+https://github.com/facebookresearch/sam2.git"
