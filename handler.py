@@ -76,7 +76,7 @@ def handler(job):
         os.makedirs(preprocess_dir, exist_ok=True)
 
         preprocess_cmd = [
-            "python", "/app/Wan2.2/wan/modules/animate/preprocess/preprocess_data.py",
+            "python3", "/app/Wan2.2/wan/modules/animate/preprocess/preprocess_data.py",
             "--ckpt_path", os.path.join(CKPT_DIR, "process_checkpoint"),
             "--video_path", video_path,
             "--refer_path", image_path,
@@ -90,7 +90,7 @@ def handler(job):
             return {"error": f"Preprocessing failed: {result.stderr}"}
 
         generate_cmd = [
-            "python", "/app/Wan2.2/generate.py",
+            "python3", "/app/Wan2.2/generate.py",
             "--task", "animate",
             "--size", f"{width}*{height}",
             "--ckpt_dir", CKPT_DIR,
