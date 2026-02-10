@@ -48,7 +48,11 @@ RUN pip3 install --no-cache-dir \
     pandas \
     matplotlib \
     sentencepiece \
-    huggingface_hub[cli]
+    huggingface_hub[cli] \
+    diffusers \
+    transformers \
+    accelerate \
+    safetensors
 
 # Install SAM2 from git (required for animate preprocessing)
 RUN pip3 install --no-cache-dir "git+https://github.com/facebookresearch/sam2.git"
