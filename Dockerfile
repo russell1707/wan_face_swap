@@ -64,6 +64,7 @@ RUN pip3 install --no-cache-dir \
     scikit-image \
     librosa \
     einops \
+    dashscope \
     easydict \
     ftfy \
     imageio[ffmpeg] \
