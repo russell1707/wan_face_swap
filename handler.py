@@ -97,7 +97,7 @@ def handler(job):
 
         generate_cmd = [
             "python3", "/app/Wan2.2/generate.py",
-            "--task", "animate",
+            "--task", "animate-14B",
             "--size", f"{width}*{height}",
             "--ckpt_dir", CKPT_DIR,
             "--video_path", video_path,
